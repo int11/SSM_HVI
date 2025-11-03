@@ -31,41 +31,41 @@ class LayerNorm(nn.Module):
 class NormDownsample(nn.Module):
     def __init__(self,in_ch,out_ch,scale=0.5,use_norm=False):
         super(NormDownsample, self).__init__()
-        self.use_norm=use_norm
-        if self.use_norm:
-            self.norm=LayerNorm(out_ch)
-        self.prelu = nn.PReLU()
+
         self.down = nn.Sequential(
             nn.Conv2d(in_ch, out_ch,kernel_size=3,stride=1, padding=1, bias=False),
             nn.UpsamplingBilinear2d(scale_factor=scale))
+        self.prelu = nn.PReLU()
+
+        self.use_norm = use_norm
+        if self.use_norm:
+            self.norm = LayerNorm(out_ch)
     def forward(self, x):
         x = self.down(x)
         x = self.prelu(x)
         if self.use_norm:
             x = self.norm(x)
-            return x
-        else:
-            return x
+        return x
 
 class NormUpsample(nn.Module):
     def __init__(self, in_ch,out_ch,scale=2,use_norm=False):
         super(NormUpsample, self).__init__()
-        self.use_norm=use_norm
-        if self.use_norm:
-            self.norm=LayerNorm(out_ch)
-        self.prelu = nn.PReLU()
+        
         self.up_scale = nn.Sequential(
-            nn.Conv2d(in_ch,out_ch,kernel_size=3,stride=1, padding=1, bias=False),
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=1, bias=False),
             nn.UpsamplingBilinear2d(scale_factor=scale))
-        self.up = nn.Conv2d(out_ch*2,out_ch,kernel_size=1,stride=1, padding=0, bias=False)
-            
-    def forward(self, x,y):
+        self.up = nn.Conv2d(out_ch*2, out_ch, kernel_size=1, stride=1, padding=0, bias=False)
+        self.prelu = nn.PReLU()
+
+        self.use_norm = use_norm
+        if self.use_norm:
+            self.norm = LayerNorm(out_ch)
+
+    def forward(self, x, y):
         x = self.up_scale(x)
-        x = torch.cat([x, y],dim=1)
+        x = torch.cat([x, y], dim=1)
         x = self.up(x)
         x = self.prelu(x)
         if self.use_norm:
-            return self.norm(x)
-        else:
-            return x
- 
+            x = self.norm(x)
+        return x

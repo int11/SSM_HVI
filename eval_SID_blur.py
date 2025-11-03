@@ -1,7 +1,9 @@
 import os
 import argparse
+import torch
 from torchvision.transforms import Compose, ToTensor
-from data.data import *
+from data.data import transform2
+from data.eval_sets import SICEDatasetFromFolderEval
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from net.CIDNet import CIDNet
@@ -55,7 +57,7 @@ if __name__ == '__main__':
                 os.mkdir(blur_folder)  
             if os.path.exists(now_dir):
                 output_folder =  blur_folder + fill_index + "/"
-                eval_data = DataLoader(dataset=get_eval_set(now_dir), num_workers=0, batch_size=1, shuffle=False)
+                eval_data = DataLoader(dataset=SICEDatasetFromFolderEval(now_dir, transform=transform2()), num_workers=0, batch_size=1, shuffle=False)
                 eval(net, eval_data, model_path, output_folder)
         
     elif ep.SID:
@@ -69,7 +71,7 @@ if __name__ == '__main__':
                 os.mkdir(SID_folder)  
             if os.path.exists(now_dir):
                 output_folder =  SID_folder + fill_index + "/"
-                eval_data = DataLoader(dataset=get_eval_set(now_dir), num_workers=0, batch_size=1, shuffle=False)
+                eval_data = DataLoader(dataset=SICEDatasetFromFolderEval(now_dir, transform=transform2()), num_workers=0, batch_size=1, shuffle=False)
                 eval(net, eval_data, model_path, output_folder)
         
 

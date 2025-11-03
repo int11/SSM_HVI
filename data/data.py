@@ -14,33 +14,9 @@ def transform1(size=256):
 def transform2():
     return Compose([ToTensor()])
 
-
-
-def get_lol_training_set(data_dir,size):
-    return LOLv1DatasetFromFolder(data_dir, transform=transform1(size))
-
-
-def get_lol_v2_training_set(data_dir,size):
-    return LOLv2DatasetFromFolder(data_dir, transform=transform1(size))
-
-
-def get_training_set_blur(data_dir,size):
-    return LOLBlurDatasetFromFolder(data_dir, transform=transform1(size))
-
-
-def get_lol_v2_syn_training_set(data_dir,size):
-    return LOLv2SynDatasetFromFolder(data_dir, transform=transform1(size))
-
-
-def get_SID_training_set(data_dir,size):
-    return SIDDatasetFromFolder(data_dir, transform=transform1(size))
-
-
-def get_SICE_training_set(data_dir,size):
-    return SICEDatasetFromFolder(data_dir, transform=transform1(size))
-
-def get_SICE_eval_set(data_dir):
-    return SICEDatasetFromFolderEval(data_dir, transform=transform2())
-
-def get_eval_set(data_dir):
-    return DatasetFromFolderEval(data_dir, transform=transform2())
+def transform3():
+    return Compose([
+        RandomHorizontalFlip(),
+        RandomVerticalFlip(),
+        ToTensor(),
+    ])

@@ -32,11 +32,11 @@ class SICEDatasetFromFolderEval(data.Dataset):
     
     
 class DatasetFromFolderEval(data.Dataset):
-    def __init__(self, data_dir, transform=None):
+    def __init__(self, data_dir, folder1='low', folder2='high', transform=None):
         super(DatasetFromFolderEval, self).__init__()
-        # low/high 폴더 모두 읽기
-        low_dir = os.path.join(data_dir, 'low')
-        high_dir = os.path.join(data_dir, 'high')
+        # folder1/folder2 폴더 읽기
+        low_dir = os.path.join(data_dir, folder1)
+        high_dir = os.path.join(data_dir, folder2)
         low_files = [f for f in listdir(low_dir) if is_image_file(f)]
         low_files.sort()
         self.low_paths = [os.path.join(low_dir, f) for f in low_files]

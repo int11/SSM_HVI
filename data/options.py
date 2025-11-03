@@ -1,14 +1,16 @@
 import argparse
 from torch.utils.data import DataLoader
-from data.data import *
+from data.data import transform1, transform2, transform3
+from data.LOLdataset import LOLv1DatasetFromFolder, LOLv2DatasetFromFolder, LOLv2SynDatasetFromFolder
+from data.eval_sets import DatasetFromFolderEval, SICEDatasetFromFolderEval
+from data.SICE_blur_SID import LOLBlurDatasetFromFolder, SIDDatasetFromFolder, SICEDatasetFromFolder
 
 def option():
     # Training settings
     parser = argparse.ArgumentParser(description='CIDNet')
-    division = 4
-    parser.add_argument('--batchSize', type=int, default=int(8 / division), help='training batch size')
-    parser.add_argument('--cropSize', type=int, default=400, help='image crop size (patch size)')
-    parser.add_argument('--nEpochs', type=int, default=1500, help='number of epochs to train for end')
+    parser.add_argument('--batchSize', type=int, default=2, help='training batch size')
+    parser.add_argument('--cropSize', type=int, default=384, help='image crop size (patch size)')
+    parser.add_argument('--nEpochs', type=int, default=500, help='number of epochs to train for end')
     parser.add_argument('--start_epoch', type=int, default=0, help='number of epochs to start, >0 is retrained a pre-trained pth')
     parser.add_argument('--snapshots', type=int, default=10, help='Snapshots for save checkpoints pth')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning Rate')
@@ -24,31 +26,25 @@ def option():
     parser.add_argument('--warmup_epochs', type=int, default=3, help='warmup_epochs')
     parser.add_argument('--start_warmup', type=bool, default=True, help='turn False to train without warmup') 
 
+    # choose which dataset you want to train, please only set one "True"
+    parser.add_argument('--dataset', type=str, default='lolv2_syn', choices=['lol_v1', 'lolv2_real', 'lolv2_syn', 'lol_blur', 'SID', 'SICE_mix', 'SICE_grad'], help='Choose one dataset to train on')
+
     # train datasets
     parser.add_argument('--data_train_lol_blur'     , type=str, default='./datasets/LOL_blur/train')
     parser.add_argument('--data_train_lol_v1'       , type=str, default='./datasets/LOLdataset/our485')
-    parser.add_argument('--data_train_lolv2_real'   , type=str, default='./datasets/LOLv2/Real_captured/Train')
-    parser.add_argument('--data_train_lolv2_syn'    , type=str, default='./datasets/LOLv2/Synthetic/Train')
+    parser.add_argument('--data_train_lolv2_real'   , type=str, default='./datasets/LOL-v2/Real_captured/Train')
+    parser.add_argument('--data_train_lolv2_syn'    , type=str, default='./datasets/LOL-v2/Synthetic/Train')
     parser.add_argument('--data_train_SID'          , type=str, default='./datasets/Sony_total_dark/train')
     parser.add_argument('--data_train_SICE'         , type=str, default='./datasets/SICE/Dataset/train')
 
     # validation input
     parser.add_argument('--data_val_lol_blur'       , type=str, default='./datasets/LOL_blur/eval/low_blur')
     parser.add_argument('--data_val_lol_v1'         , type=str, default='./datasets/LOLdataset/eval15')
-    parser.add_argument('--data_val_lolv2_real'     , type=str, default='./datasets/LOLv2/Real_captured/Test/Low')
-    parser.add_argument('--data_val_lolv2_syn'      , type=str, default='./datasets/LOLv2/Synthetic/Test/Low')
+    parser.add_argument('--data_val_lolv2_real'     , type=str, default='./datasets/LOL-v2/Real_captured/Test')
+    parser.add_argument('--data_val_lolv2_syn'      , type=str, default='./datasets/LOL-v2/Synthetic/Test')
     parser.add_argument('--data_val_SID'            , type=str, default='./datasets/Sony_total_dark/eval/short')
     parser.add_argument('--data_val_SICE_mix'       , type=str, default='./datasets/SICE/Dataset/eval/test')
     parser.add_argument('--data_val_SICE_grad'      , type=str, default='./datasets/SICE/Dataset/eval/test')
-
-    # validation groundtruth
-    parser.add_argument('--data_valgt_lol_blur'     , type=str, default='./datasets/LOL_blur/eval/high_sharp_scaled/')
-    parser.add_argument('--data_valgt_lol_v1'       , type=str, default='./datasets/LOLdataset/eval15/high/')
-    parser.add_argument('--data_valgt_lolv2_real'   , type=str, default='./datasets/LOLv2/Real_captured/Test/Normal/')
-    parser.add_argument('--data_valgt_lolv2_syn'    , type=str, default='./datasets/LOLv2/Synthetic/Test/Normal/')
-    parser.add_argument('--data_valgt_SID'          , type=str, default='./datasets/Sony_total_dark/eval/long/')
-    parser.add_argument('--data_valgt_SICE_mix'     , type=str, default='./datasets/SICE/Dataset/eval/target/')
-    parser.add_argument('--data_valgt_SICE_grad'    , type=str, default='./datasets/SICE/Dataset/eval/target/')
 
     parser.add_argument('--val_folder', default='./results/', help='Location to save validation datasets')
 
@@ -71,8 +67,8 @@ def option():
     # evaluation parameters
     parser.add_argument('--use_GT_mean', type=bool, default=False, help='Use the mean of GT to rectify the output of the model')
 
-    # choose which dataset you want to train, please only set one "True"
-    parser.add_argument('--dataset', type=str, default='lol_v1', choices=['lol_v1', 'lolv2_real', 'lolv2_syn', 'lol_blur', 'SID', 'SICE_mix', 'SICE_grad'], help='Choose one dataset to train on')
+    # SSM parameters
+    parser.add_argument('--max_scale_factor', type=float, default=2.0, help='Maximum scale factor for SSM module')
     return parser
 
 
@@ -80,39 +76,39 @@ def load_datasets(opt):
     print('===> Loading datasets')
     dataset = opt.dataset
     if dataset == 'lol_v1':
-        train_set = get_lol_training_set(opt.data_train_lol_v1, size=opt.cropSize)
+        train_set = LOLv1DatasetFromFolder(opt.data_train_lol_v1, transform=transform1(opt.cropSize))
         training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=opt.shuffle)
-        test_set = get_eval_set(opt.data_val_lol_v1)
+        test_set = DatasetFromFolderEval(opt.data_val_lol_v1, folder1='low', folder2='high', transform=transform2())
         testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=1, shuffle=False)
     elif dataset == 'lol_blur':
-        train_set = get_training_set_blur(opt.data_train_lol_blur, size=opt.cropSize)
+        train_set = LOLBlurDatasetFromFolder(opt.data_train_lol_blur, transform=transform1(opt.cropSize))
         training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=opt.shuffle)
-        test_set = get_eval_set(opt.data_val_lol_blur)
+        test_set = DatasetFromFolderEval(opt.data_val_lol_blur, folder1='low_blur', folder2='high_sharp_scaled', transform=transform2())
         testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=1, shuffle=False)
     elif dataset == 'lolv2_real':
-        train_set = get_lol_v2_training_set(opt.data_train_lolv2_real, size=opt.cropSize)
+        train_set = LOLv2DatasetFromFolder(opt.data_train_lolv2_real, transform=transform1(opt.cropSize))
         training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=opt.shuffle)
-        test_set = get_eval_set(opt.data_val_lolv2_real)
+        test_set = DatasetFromFolderEval(opt.data_val_lolv2_real, folder1='Low', folder2='Normal', transform=transform2())
         testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=1, shuffle=False)
     elif dataset == 'lolv2_syn':
-        train_set = get_lol_v2_syn_training_set(opt.data_train_lolv2_syn, size=opt.cropSize)
+        train_set = LOLv2SynDatasetFromFolder(opt.data_train_lolv2_syn, transform=transform3())
         training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=opt.shuffle)
-        test_set = get_eval_set(opt.data_val_lolv2_syn)
+        test_set = DatasetFromFolderEval(opt.data_val_lolv2_syn, folder1='Low', folder2='Normal', transform=transform2())
         testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=1, shuffle=False)
     elif dataset == 'SID':
-        train_set = get_SID_training_set(opt.data_train_SID, size=opt.cropSize)
+        train_set = SIDDatasetFromFolder(opt.data_train_SID, transform=transform1(opt.cropSize))
         training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=opt.shuffle)
-        test_set = get_eval_set(opt.data_val_SID)
+        test_set = DatasetFromFolderEval(opt.data_val_SID, folder1='short', folder2='long', transform=transform2())
         testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=1, shuffle=False)
     elif dataset == 'SICE_mix':
-        train_set = get_SICE_training_set(opt.data_train_SICE, size=opt.cropSize)
+        train_set = SICEDatasetFromFolder(opt.data_train_SICE, transform=transform1(opt.cropSize))
         training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=opt.shuffle)
-        test_set = get_SICE_eval_set(opt.data_val_SICE_mix)
+        test_set = SICEDatasetFromFolderEval(opt.data_val_SICE_mix, transform=transform2())
         testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=1, shuffle=False)
     elif dataset == 'SICE_grad':
-        train_set = get_SICE_training_set(opt.data_train_SICE, size=opt.cropSize)
+        train_set = SICEDatasetFromFolder(opt.data_train_SICE, transform=transform1(opt.cropSize))
         training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=opt.shuffle)
-        test_set = get_SICE_eval_set(opt.data_val_SICE_grad)
+        test_set = SICEDatasetFromFolderEval(opt.data_val_SICE_grad, transform=transform2())
         testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=1, shuffle=False)
     else:
         raise Exception("should choose a valid dataset")

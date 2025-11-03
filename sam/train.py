@@ -5,7 +5,7 @@ import torch
 import random
 from torchvision import transforms
 import torch.optim as optim
-from net.CIDNet_SSM import CIDNet as CIDNet_sam
+from net.CIDNet_SSM import CIDNet as CIDNet_SSM
 from data.options import option, load_datasets
 from sam.eval import eval
 from data.data import *
@@ -21,7 +21,6 @@ def train_one_epoch(model, optimizer, training_data_loader, args, L1_loss, P_los
     model.train()
     total_loss = 0  # 전체 에폭의 손실 합계
     total_batches = 0  # 전체 배치 수
-    train_len = len(training_data_loader)
     torch.autograd.set_detect_anomaly(args.grad_detect)
     
     for batch_idx, batch in enumerate(training_data_loader, 1):
@@ -74,9 +73,9 @@ def train_one_epoch(model, optimizer, training_data_loader, args, L1_loss, P_los
                 
 
 
-def build_model():
+def build_model(max_scale_factor=1.2):
     print('===> Building model ')
-    model = CIDNet_sam()
+    model = CIDNet_SSM(max_scale_factor=max_scale_factor)
     model = model.to(dist.get_device())
     return model
 
@@ -146,12 +145,13 @@ def train(rank, args):
     if rank is not None:
         dist.init_distributed(rank)
 
-    now = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-    with Tee(os.path.join(f"./weights/train{now}", f'log.txt')):
+    now = datetime.now().strftime("%Y%m%d_%H%M%S")
+    save_dir = f"./weights/{args.dataset}/{now}"
+    with Tee(os.path.join(save_dir, f'log.txt')):
         print(args)
 
         training_data_loader, testing_data_loader = load_datasets(args)
-        model = build_model()
+        model = build_model(args.max_scale_factor)
         L1_loss,P_loss,E_loss,D_loss = init_loss(args)
         optimizer = optim.Adam(model.parameters(), lr=args.lr)
         
@@ -200,8 +200,8 @@ def train(rank, args):
             
             return avg_psnr, avg_ssim, avg_lpips
         
-        eval_and_log(False)
-        eval_and_log(True)
+        # eval_and_log(False)
+        # eval_and_log(True)
 
         for epoch in range(start_epoch+1, args.nEpochs + start_epoch + 1):
             # Set epoch for distributed sampler
@@ -216,7 +216,7 @@ def train(rank, args):
                 epoch, avg_loss, optimizer.param_groups[0]['lr']))
             
             if epoch % args.snapshots == 0 and dist.is_main_process():
-                checkpoint(epoch, model, optimizer, f"./weights/train{now}")
+                checkpoint(epoch, model, optimizer, save_dir)
 
                 eval_and_log(False)
                 avg_psnr, avg_ssim, avg_lpips = eval_and_log(True)

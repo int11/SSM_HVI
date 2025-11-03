@@ -1,7 +1,8 @@
 import os
 import argparse
 from tqdm import tqdm
-from data.data import *
+from data.data import transform2
+from data.eval_sets import DatasetFromFolderEval, SICEDatasetFromFolderEval
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from loss.losses import *
@@ -122,7 +123,7 @@ if __name__ == '__main__':
     num_workers = 1
     alpha_i = None
     if ep.lol:
-        eval_data = DataLoader(dataset=get_eval_set("./datasets/LOLv1/eval15/low"), num_workers=num_workers, batch_size=1, shuffle=False)
+        eval_data = DataLoader(dataset=DatasetFromFolderEval("./datasets/LOLv1/eval15", folder1='low', folder2='high', transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         if ep.perc:
             weight_path = './weights/LOLv1/w_perc.pth'
         else:
@@ -130,7 +131,7 @@ if __name__ == '__main__':
         
             
     elif ep.lol_v2_real:
-        eval_data = DataLoader(dataset=get_eval_set("./datasets/LOLv2/Real_captured/Test/Low"), num_workers=num_workers, batch_size=1, shuffle=False)
+        eval_data = DataLoader(dataset=DatasetFromFolderEval("./datasets/LOLv2/Real_captured/Test", folder1='Low', folder2='Normal', transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         if ep.best_GT_mean:
             weight_path = './weights/LOLv2_real/w_perc.pth'
             alpha_i = 0.84
@@ -142,33 +143,33 @@ if __name__ == '__main__':
             alpha_i = 0.82
             
     elif ep.lol_v2_syn:
-        eval_data = DataLoader(dataset=get_eval_set("./datasets/LOLv2/Synthetic/Test/Low"), num_workers=num_workers, batch_size=1, shuffle=False)
+        eval_data = DataLoader(dataset=DatasetFromFolderEval("./datasets/LOLv2/Synthetic/Test", folder1='Low', folder2='Normal', transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         if ep.perc:
             weight_path = './weights/LOLv2_syn/w_perc.pth'
         else:
             weight_path = './weights/LOLv2_syn/wo_perc.pth'
             
     elif ep.SICE_grad:
-        eval_data = DataLoader(dataset=get_SICE_eval_set("./datasets/SICE/SICE_Grad"), num_workers=num_workers, batch_size=1, shuffle=False)
+        eval_data = DataLoader(dataset=SICEDatasetFromFolderEval("./datasets/SICE/SICE_Grad", transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         weight_path = './weights/SICE.pth'
         
     elif ep.SICE_mix:
-        eval_data = DataLoader(dataset=get_SICE_eval_set("./datasets/SICE/SICE_Mix"), num_workers=num_workers, batch_size=1, shuffle=False)
+        eval_data = DataLoader(dataset=SICEDatasetFromFolderEval("./datasets/SICE/SICE_Mix", transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         weight_path = './weights/SICE.pth'
     
     elif ep.unpaired: 
         if ep.DICM:
-            eval_data = DataLoader(dataset=get_SICE_eval_set("./datasets/DICM"), num_workers=num_workers, batch_size=1, shuffle=False)
+            eval_data = DataLoader(dataset=SICEDatasetFromFolderEval("./datasets/DICM", transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         elif ep.LIME:
-            eval_data = DataLoader(dataset=get_SICE_eval_set("./datasets/LIME"), num_workers=num_workers, batch_size=1, shuffle=False)
+            eval_data = DataLoader(dataset=SICEDatasetFromFolderEval("./datasets/LIME", transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         elif ep.MEF:
-            eval_data = DataLoader(dataset=get_SICE_eval_set("./datasets/MEF"), num_workers=num_workers, batch_size=1, shuffle=False)
+            eval_data = DataLoader(dataset=SICEDatasetFromFolderEval("./datasets/MEF", transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         elif ep.NPE:
-            eval_data = DataLoader(dataset=get_SICE_eval_set("./datasets/NPE"), num_workers=num_workers, batch_size=1, shuffle=False)
+            eval_data = DataLoader(dataset=SICEDatasetFromFolderEval("./datasets/NPE", transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         elif ep.VV:
-            eval_data = DataLoader(dataset=get_SICE_eval_set("./datasets/VV"), num_workers=num_workers, batch_size=1, shuffle=False)
+            eval_data = DataLoader(dataset=SICEDatasetFromFolderEval("./datasets/VV", transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         elif ep.custome:
-            eval_data = DataLoader(dataset=get_SICE_eval_set(ep.custome_path), num_workers=num_workers, batch_size=1, shuffle=False)
+            eval_data = DataLoader(dataset=SICEDatasetFromFolderEval(ep.custome_path, transform=transform2()), num_workers=num_workers, batch_size=1, shuffle=False)
         alpha_i = ep.alpha_i
         norm_size = False
         weight_path = ep.unpaired_weights
