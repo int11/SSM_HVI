@@ -74,6 +74,7 @@ def eval_original(model, testing_data_loader, device, base_alpha_s=1.0, base_alp
     model.trans.alpha_i = base_alpha_i
 
     output_list = []  # 출력 이미지 저장용 리스트
+    gt_list = []   # 라벨 이미지 저장용 리스트
 
     for batch in testing_data_loader:
         with torch.no_grad():
@@ -83,18 +84,23 @@ def eval_original(model, testing_data_loader, device, base_alpha_s=1.0, base_alp
         output = torch.clamp(output, 0, 1).to(device)
         output_np = output.squeeze(0).cpu().numpy().transpose(1, 2, 0)
         output_list.append(output_np)
+        # gt는 tensor이므로 PIL로 변환
+        from torchvision.transforms import ToPILImage
+        gt_img = ToPILImage()(gt.squeeze(0).cpu())
+        gt_list.append(gt_img)
         torch.cuda.empty_cache()
     
     torch.set_grad_enabled(True)
 
-    return output_list
+    return output_list, gt_list
     
 if __name__ == '__main__':
     parser = option()
-    parser.add_argument('--weight_path', type=str, default='weights/train2025-10-13-005336/epoch_1500.pth', help='Path to the pre-trained model weights')
+    parser.add_argument('--weight_path', type=str, default='weights/lol_v1/w_perc_no_pretrain/epoch_1500.pth', help='Path to the pre-trained model weights')
     parser.add_argument('--output_dir', type=str, default='results/ssm_eval_results', help='Directory to save comparison images')
-    parser.add_argument('--cidnet_model', type=str, default="Fediory/HVI-CIDNet-LOLv1-woperc",
+    parser.add_argument('--cidnet_model', type=str, default="Fediory/HVI-CIDNet-LOLv1-wperc",
                         help='CIDNet model name or path from Hugging Face')
+    
     parser.add_argument('--base_alpha_s', type=float, default=1.0, help='Base alpha_s parameter for CIDNet')
     parser.add_argument('--base_alpha_i', type=float, default=1.0, help='Base alpha_i parameter for CIDNet')
     parser.add_argument('--use_GT_mean', type=bool, default=False, help='Use the mean of GT to rectify the output of the model')
@@ -117,7 +123,7 @@ if __name__ == '__main__':
     output_list, gt_list = eval(eval_net, testing_data_loader, alpha_predict=True, base_alpha_s=args.base_alpha_s, base_alpha_i=args.base_alpha_i)
     
     # Evaluate - Base CIDNet (without alpha prediction)
-    output_base_list = eval_original(cidnet_base, testing_data_loader, device, base_alpha_s=args.base_alpha_s, base_alpha_i=args.base_alpha_i)
+    output_base_list, gt_list_base = eval_original(cidnet_base, testing_data_loader, device, base_alpha_s=args.base_alpha_s, base_alpha_i=args.base_alpha_i)
     
     # Calculate metrics for CIDNet_sam
     print("\n" + "="*60)
