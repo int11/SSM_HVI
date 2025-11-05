@@ -63,12 +63,9 @@ def option():
     # auto grad, turn off to speed up training
     parser.add_argument('--grad_detect', type=bool, default=False, help='if gradient explosion occurs, turn-on it')
     parser.add_argument('--grad_clip', type=bool, default=True, help='if gradient fluctuates too much, turn-on it')
-    
-    # evaluation parameters
-    parser.add_argument('--use_GT_mean', type=bool, default=False, help='Use the mean of GT to rectify the output of the model')
 
     # SSM parameters
-    parser.add_argument('--max_scale_factor', type=float, default=2.0, help='Maximum scale factor for SSM module')
+    parser.add_argument('--max_scale_factor', type=float, default=1.2, help='Maximum scale factor for SSM module')
     return parser
 
 

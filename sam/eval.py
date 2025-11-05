@@ -97,7 +97,7 @@ if __name__ == '__main__':
                         help='CIDNet model name or path from Hugging Face')
     parser.add_argument('--base_alpha_s', type=float, default=1.0, help='Base alpha_s parameter for CIDNet')
     parser.add_argument('--base_alpha_i', type=float, default=1.0, help='Base alpha_i parameter for CIDNet')
-
+    parser.add_argument('--use_GT_mean', type=bool, default=False, help='Use the mean of GT to rectify the output of the model')
     args = parser.parse_args()
 
     training_data_loader, testing_data_loader = load_datasets(args)
