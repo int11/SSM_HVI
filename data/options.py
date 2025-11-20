@@ -8,15 +8,16 @@ from data.SICE_blur_SID import LOLBlurDatasetFromFolder, SIDDatasetFromFolder, S
 def option():
     # Training settings
     parser = argparse.ArgumentParser(description='CIDNet')
-    parser.add_argument('--batchSize', type=int, default=1, help='training batch size')
-    parser.add_argument('--cropSize', type=int, default=384, help='image crop size (patch size)')
-    parser.add_argument('--nEpochs', type=int, default=500, help='number of epochs to train for end')
+    parser.add_argument('--batchSize', type=int, default=2, help='training batch size')
+    parser.add_argument('--cropSize', type=int, default=400, help='image crop size (patch size)')
+    parser.add_argument('--nEpochs', type=int, default=1500, help='number of epochs to train for end')
     parser.add_argument('--start_epoch', type=int, default=0, help='number of epochs to start, >0 is retrained a pre-trained pth')
     parser.add_argument('--snapshots', type=int, default=10, help='Snapshots for save checkpoints pth')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning Rate')
     parser.add_argument('--gpu_mode', type=bool, default=True)
     parser.add_argument('--shuffle', type=bool, default=True)
     parser.add_argument('--threads', type=int, default=0, help='number of threads for dataloader to use')
+    parser.add_argument('--seed', type=int, default=123, help='random seed to use. Default=123')
 
     # choose a scheduler
     parser.add_argument('--cos_restart_cyclic', type=bool, default=False)
@@ -27,7 +28,7 @@ def option():
     parser.add_argument('--start_warmup', type=bool, default=True, help='turn False to train without warmup') 
 
     # choose which dataset you want to train, please only set one "True"
-    parser.add_argument('--dataset', type=str, default='lolv2_syn', choices=['lol_v1', 'lolv2_real', 'lolv2_syn', 'lol_blur', 'SID', 'SICE_mix', 'SICE_grad'], help='Choose one dataset to train on')
+    parser.add_argument('--dataset', type=str, default='lol_v1', choices=['lol_v1', 'lolv2_real', 'lolv2_syn', 'lol_blur', 'SID', 'SICE_mix', 'SICE_grad'], help='Choose one dataset to train on')
 
     # train datasets
     parser.add_argument('--data_train_lol_blur'     , type=str, default='./datasets/LOL_blur/train')

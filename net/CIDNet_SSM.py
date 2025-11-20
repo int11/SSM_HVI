@@ -41,31 +41,6 @@ class SSM(nn.Module):
         return alpha_s, alpha_i  # alpha_s: (batch, 1, h, w), alpha_i: (batch, 3, h, w)
 
 
-def load_sam_model(model_path="Gourieff/ReActor/models/sams/sam_vit_b_01ec64.pth", device="cuda"):
-    """Hugging Face에서 SAM 모델을 다운로드하고 로드"""
-    # sam_model_path를 repo_id와 filename으로 분리
-    parts = model_path.split('/')
-    if len(parts) < 3:
-        raise ValueError("SAM model path should be in format: repo_id/filename (e.g., Gourieff/ReActor/models/sams/sam_vit_b_01ec64.pth)")
-    
-    model_repo = '/'.join(parts[:2])  # "Gourieff/ReActor"
-    model_filename = '/'.join(parts[2:])  # "models/sams/sam_vit_b_01ec64.pth"
-    
-    print(f"Loading SAM model from: {model_repo}/{model_filename}")
-    
-    # Hugging Face Hub에서 SAM checkpoint 다운로드
-    checkpoint_path = hf_hub_download(
-        repo_id=model_repo, 
-        filename=model_filename, 
-        repo_type="dataset"
-    )
-    print(f"SAM model downloaded from: {checkpoint_path}")
-    
-    # SAM 모델 초기화 및 로드
-    sam = sam_model_registry["vit_b"](checkpoint=checkpoint_path)
-    return sam
-
-
 class CIDNet(nn.Module, PyTorchModelHubMixin):
     def __init__(self, 
                  channels=[36, 36, 72, 144],

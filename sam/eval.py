@@ -96,9 +96,9 @@ def eval_original(model, testing_data_loader, device, base_alpha_s=1.0, base_alp
     
 if __name__ == '__main__':
     parser = option()
-    parser.add_argument('--weight_path', type=str, default='weights/lol_v1/w_perc_no_pretrain/epoch_1500.pth', help='Path to the pre-trained model weights')
+    parser.add_argument('--weight_path', type=str, default='weights/lolv2_syn/20251104_153530_w_perc_msf1.2/epoch_500.pth', help='Path to the pre-trained model weights')
     parser.add_argument('--output_dir', type=str, default='results/ssm_eval_results', help='Directory to save comparison images')
-    parser.add_argument('--cidnet_model', type=str, default="Fediory/HVI-CIDNet-LOLv1-wperc",
+    parser.add_argument('--cidnet_model', type=str, default="Fediory/HVI-CIDNet-LOLv2-syn-wperc",
                         help='CIDNet model name or path from Hugging Face')
     
     parser.add_argument('--base_alpha_s', type=float, default=1.0, help='Base alpha_s parameter for CIDNet')
@@ -159,11 +159,31 @@ if __name__ == '__main__':
         input_np = input_tensor.squeeze(0).numpy().transpose(1, 2, 0)
         input_images.append(input_np)
     
+    # Create subdirectories for individual images
+    input_dir = os.path.join(args.output_dir, 'input')
+    cidnet_dir = os.path.join(args.output_dir, 'cidnet')
+    cidnet_ssm_dir = os.path.join(args.output_dir, 'cidnet_ssm')
+    gt_dir = os.path.join(args.output_dir, 'gt')
+    comparison_dir = os.path.join(args.output_dir, 'comparison')
+    
+    os.makedirs(input_dir, exist_ok=True)
+    os.makedirs(cidnet_dir, exist_ok=True)
+    os.makedirs(cidnet_ssm_dir, exist_ok=True)
+    os.makedirs(gt_dir, exist_ok=True)
+    os.makedirs(comparison_dir, exist_ok=True)
+    
     for idx, (output_np, base_output_np, gt_img, input_np) in enumerate(zip(output_list, output_base_list, gt_list, input_images)):
         # Convert numpy outputs to PIL
         output_img = Image.fromarray((output_np * 255).astype(np.uint8))
         base_output_img = Image.fromarray((base_output_np * 255).astype(np.uint8))
         input_img = Image.fromarray((input_np * 255).astype(np.uint8))
+        
+        # Save individual images
+        img_name = f'{idx+1:03d}.png'
+        input_img.save(os.path.join(input_dir, img_name))
+        base_output_img.save(os.path.join(cidnet_dir, img_name))
+        output_img.save(os.path.join(cidnet_ssm_dir, img_name))
+        gt_img.save(os.path.join(gt_dir, img_name))
         
         # Create comparison image (Input | Base CIDNet | CIDNet_sam | GT)
         h, w = output_np.shape[:2]
@@ -183,8 +203,13 @@ if __name__ == '__main__':
         draw.text((w*3 + w//2 - 20, label_y), "GT", fill="white", font=font)
         
         # Save comparison image
-        comparison_path = os.path.join(args.output_dir, f'comparison_{idx+1:03d}.png')
+        comparison_path = os.path.join(comparison_dir, f'comparison_{idx+1:03d}.png')
         comparison.save(comparison_path)
-        print(f"Saved comparison image: {comparison_path}")
+        print(f"Saved images [{idx+1:03d}]: input, cidnet, cidnet_ssm, gt, comparison")
     
-    print(f"\n✓ Saved {len(output_list)} comparison images to: {args.output_dir}")
+    print(f"\n✓ Saved {len(output_list)} images to:")
+    print(f"  - Input images: {input_dir}")
+    print(f"  - CIDNet outputs: {cidnet_dir}")
+    print(f"  - CIDNet_SSM outputs: {cidnet_ssm_dir}")
+    print(f"  - Ground truth: {gt_dir}")
+    print(f"  - Comparisons: {comparison_dir}")

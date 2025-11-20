@@ -42,10 +42,12 @@ class NormDownsample(nn.Module):
             self.norm = LayerNorm(out_ch)
     def forward(self, x):
         x = self.down(x)
-        x = self.prelu(x)
         if self.use_norm:
             x = self.norm(x)
+        x = self.prelu(x)
+        
         return x
+
 
 class NormUpsample(nn.Module):
     def __init__(self, in_ch,out_ch,scale=2,use_norm=False):
@@ -65,7 +67,29 @@ class NormUpsample(nn.Module):
         x = self.up_scale(x)
         x = torch.cat([x, y], dim=1)
         x = self.up(x)
-        x = self.prelu(x)
         if self.use_norm:
             x = self.norm(x)
+        x = self.prelu(x)
+        
+        return x
+
+class NormUpsample_no_y(nn.Module):
+    def __init__(self, in_ch,out_ch,scale=2,use_norm=False):
+        super(NormUpsample_no_y, self).__init__()
+        
+        self.up_scale = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.UpsamplingBilinear2d(scale_factor=scale))
+        self.prelu = nn.PReLU()
+
+        self.use_norm = use_norm
+        if self.use_norm:
+            self.norm = LayerNorm(out_ch)
+
+    def forward(self, x):
+        x = self.up_scale(x)
+        if self.use_norm:
+            x = self.norm(x)
+        x = self.prelu(x)
+        
         return x

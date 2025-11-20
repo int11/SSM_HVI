@@ -19,6 +19,26 @@ from sam.utils import Tee, checkpoint, compute_model_complexity
 from torch.utils.tensorboard import SummaryWriter
 
 
+def init_seed(seed=None, deterministic=False, benchmark=True):
+    if seed is None:
+        seed = random.randint(1, 1000000)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)    
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    
+    if deterministic:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    else:
+        torch.backends.cudnn.deterministic = False
+        torch.backends.cudnn.benchmark = benchmark
+    return seed
+
+
 def train_one_epoch(model, optimizer, training_data_loader, args, L1_loss, P_loss, E_loss, D_loss):
     model.train()
     total_loss = 0  # 전체 에폭의 손실 합계
@@ -79,6 +99,7 @@ def train_one_epoch(model, optimizer, training_data_loader, args, L1_loss, P_los
 
 def build_model(max_scale_factor=1.2):
     print('===> Building model ')
+    # model = CIDNet()
     model = CIDNet_SSM(max_scale_factor=max_scale_factor)
     model = model.to(dist.get_device())
     return model
@@ -147,19 +168,21 @@ def init_loss(args):
 
 def train(rank, args):
     if rank is not None:
-        dist.init_distributed(rank)
+            dist.init_distributed(rank)
 
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
     save_dir = f"./weights/{args.dataset}/{now}"
-    
-    # Initialize TensorBoard writer (only on main process)
-    writer = None
-    if dist.is_main_process():
-        log_dir = os.path.join(save_dir, 'tensorboard')
-        writer = SummaryWriter(log_dir)
-        print(f"TensorBoard logging to: {log_dir}")
-    
+
     with Tee(os.path.join(save_dir, f'log.txt')):
+        init_seed(args.seed)
+        
+        # Initialize TensorBoard writer (only on main process)
+        writer = None
+        if dist.is_main_process():
+            log_dir = os.path.join(save_dir, 'tensorboard')
+            writer = SummaryWriter(log_dir)
+            print(f"TensorBoard logging to: {log_dir}")
+
         print(args)
 
         training_data_loader, testing_data_loader = load_datasets(args)
@@ -170,7 +193,7 @@ def train(rank, args):
             flops, params = compute_model_complexity(model)
             print(f"Model FLOPs: {flops}, Params: {params}")
 
-        L1_loss,P_loss,E_loss,D_loss = init_loss(args)
+        L1_loss, P_loss, E_loss, D_loss = init_loss(args)
         optimizer = optim.Adam(model.parameters(), lr=args.lr)
         
         # Load checkpoint if start_epoch > 0
@@ -272,4 +295,6 @@ if __name__ == '__main__':
     if world_size > 1:
         import torch.multiprocessing as mp
         mp.spawn(train, args=(args,), nprocs=world_size, join=True)
+    else:
+        train(None, args)
     

@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 import torch.nn as nn 
 
 
-def init_distributed(rank, print_rank: int=0, print_method: str='builtin', seed: int=None, ):
+def init_distributed(rank, print_rank: int=0, print_method: str='builtin'):
     """
     env setup
     args:
@@ -32,8 +32,6 @@ def init_distributed(rank, print_rank: int=0, print_method: str='builtin', seed:
         print('Not init distributed mode.')
 
     setup_print(get_device() == print_rank, method=print_method)
-    if seed is not None:
-        seed_torch(seed)
 
     return enabled_dist
 
@@ -43,26 +41,6 @@ def get_device():
 
 def is_main_process():
     return get_device() == 0 or get_device() == 'cpu'
-
-def seed_torch(seed=None, deterministic=False, benchmark=True):
-    if seed is None:
-        seed = random.randint(1, 1000000)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)    
-    np.random.seed(seed)
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    
-    if deterministic:
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-    else:
-        torch.backends.cudnn.deterministic = False
-        torch.backends.cudnn.benchmark = benchmark
-    return seed
-
 
 def setup_print(is_main, method='builtin'):
     """This function disables printing when not in master process

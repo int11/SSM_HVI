@@ -43,6 +43,17 @@ class RGB_HVI(nn.Module):
         return xyz
 
     def HVI_to_RGB(self, img, alpha_s=1.0, alpha_i=1.0):
+        """
+        Convert HVI color space back to RGB with adaptive saturation and intensity scaling.
+        
+        Args:
+            img: HVI format tensor (B, 3, H, W)
+            alpha_s: Saturation scaling factor (scalar or tensor shape (B, H, W) or (B, 1, H, W))
+            alpha_i: Intensity scaling factor (scalar or tensor shape (B, 3, H, W))
+            
+        Returns:
+            RGB tensor (B, 3, H, W)
+        """
         eps = 1e-8
         H,V,I = img[:,0,:,:],img[:,1,:,:],img[:,2,:,:]
         
@@ -62,6 +73,10 @@ class RGB_HVI(nn.Module):
         h = h%1
         s = torch.sqrt(H**2 + V**2 + eps)
 
+        # Squeeze alpha_s if it has channel dimension
+        if isinstance(alpha_s, torch.Tensor) and alpha_s.dim() == 4:
+            alpha_s = alpha_s.squeeze(1)
+        
         s = s * alpha_s
 
         s = torch.clamp(s,0,1)
